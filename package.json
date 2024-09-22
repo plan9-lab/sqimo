@@ -15,7 +15,7 @@
     "typescript": "^5.0.0"
   },
   "scripts": {
-	"dev": "bun test --watch",
+	"dev": "bun upgrade && bun i && bun test --watch",
 	"test": "bun test"
   },
   "dependencies": {
