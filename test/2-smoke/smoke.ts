@@ -1,7 +1,11 @@
 import { it, expect } from 'bun:test'
 import { Sqimo } from '@/index'
+import { join } from 'node:path'
 
-const sqimo = new Sqimo({})
+const sqimo = new Sqimo({
+	//connection_string: 'test.db'
+})
+
 const collection_name1 = 'users'
 
 it('create collection', async (done) => {

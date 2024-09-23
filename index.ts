@@ -3,33 +3,36 @@
  * Currently it supports only sqlite. Support for mongo and postgres is planned.
  */
 import { Database } from 'bun:sqlite'
-import fs from 'node:fs'
 import path from 'node:path'
-import { monotonicFactory } from 'ulid'
+
+export const cwd = __dirname
 
 export const info = (message: string) => {
 	console.info(`\u001b[2m[SQIMO] ${message}\u001b[22m`)
 }
 
 /**
- * Generates lexicaly sortable safe uniq ids.
+ * createUid Generates lexicaly sortable inremental unque ids.
  */
 export const createUid = () => {
-	const ulid = monotonicFactory()
-	return ulid()
+	return Date.now().toString(36) + Math.random().toString(36)
 }
 
 export const jsonToSql = (query: any) => {
-	let sql = ' _id'
+	if (Object.keys(query).length === 0) {
+		return ''
+	}
+	const sql = ' WHERE '
+	const conditions = []
 	for (const key in query) {
 		const value = query[key]
 		if (key.startsWith('!')) {
-			sql += ` AND ${key.slice(1)} != '${value}'`
+			conditions.push(`${key.slice(1)} != '${value}'`)
 		} else {
-			sql += ` AND ${key} = '${value}'`
+			conditions.push(`${key} = '${value}'`)
 		}
 	}
-	return sql
+	return sql + conditions.join(' AND ')
 }
 
 export interface SqimoFiled {
@@ -109,23 +112,29 @@ export class Sqimo {
 	 * Добавляет поле в коллекцию если его не существует 
 	 */
 	async addField(collection: string, field: SqimoFiled) {
-		let sql = `ALTER TABLE ${collection} ADD COLUMN ${field.name} ${field.type}`
-
-		if (field.unique) {
-			sql += ' UNIQUE'
+		// Check if the field already exists
+		const existingFields = await this.showFields(collection)
+		const fieldExists = existingFields.some(existingField => existingField.name === field.name)
+	
+		if (!fieldExists) {
+			let sql = `ALTER TABLE ${collection} ADD COLUMN ${field.name} ${field.type}`
+	
+			if (field.unique) {
+				sql += ' UNIQUE'
+			}
+			if (field.not_null) {
+				sql += ' NOT NULL'
+			}
+			if (field.default) {
+				sql += ` DEFAULT ${field.default}`
+			}
+			this.db.exec(sql)
+	
+			if (field.index) {
+				this.ensureIndex(collection, [field.name])
+			}
 		}
-		if (field.not_null) {
-			sql += ' NOT NULL'
-		} 
-		if (field.default) {
-			sql += ` DEFAULT ${field.default}`
-		}
-		this.db.exec(sql)
-
-		if (field.index) {
-			this.ensureIndex(collection, [field.name])
-		}
-	} 
+	}
 
 	/**
 	 * Shows fields from collection.
@@ -154,7 +163,7 @@ export class Sqimo {
 		let sql = `SELECT * FROM ${collection}`
 
 		if (query) {
-			sql += ` WHERE ${jsonToSql(query)}`
+			sql += jsonToSql(query)
 		}
 
 		return this
