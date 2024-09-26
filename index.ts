@@ -18,6 +18,10 @@ export const createUid = () => {
 	return Date.now().toString(36) + Math.random().toString(36)
 }
 
+
+/**
+ * Converts mongo-like query to sql.
+ */
 export const jsonToSql = (query: any) => {
 	if (Object.keys(query).length === 0) {
 		return ''
