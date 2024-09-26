@@ -11,11 +11,11 @@ export const info = (message: string) => {
 	console.info(`\u001b[2m[SQIMO] ${message}\u001b[22m`)
 }
 
-/**
- * createUid Generates lexicaly sortable inremental unque ids.
- */
+
 export const createUid = () => {
-	return Date.now().toString(36) + Math.random().toString(36)
+	const timestamp = Date.now().toString(36)
+	const randomPart = Math.random().toString(36).substring(2, 8) // 6 символов
+	return `${timestamp}-${randomPart}`
 }
 
 
