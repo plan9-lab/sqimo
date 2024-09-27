@@ -4,6 +4,7 @@
  */
 import { Database } from 'bun:sqlite'
 import path from 'node:path'
+import fs from 'fs'
 
 export const cwd = __dirname
 
@@ -11,13 +12,11 @@ export const info = (message: string) => {
 	console.info(`\u001b[2m[SQIMO] ${message}\u001b[22m`)
 }
 
-
 export const createUid = () => {
 	const timestamp = Date.now().toString(36)
 	const randomPart = Math.random().toString(36).substring(2, 8) // 6 символов
 	return `${timestamp}-${randomPart}`
 }
-
 
 /**
  * Converts mongo-like query to sql.
@@ -61,11 +60,14 @@ export class Sqimo {
 	constructor(options: SqimoOptions) {
 		this.options = options
 		if (options.connection_string) {
-			const db_path = path.join(options.connection_string)
-			this.db = new Database(db_path)
-			info(db_path)
+			const _path = path.parse(options.connection_string)
+			if (_path.dir && !fs.existsSync(_path.dir)) {
+				fs.mkdirSync(_path.dir, { recursive: true })
+			}
+			this.db = new Database(options.connection_string)
+			info(options.connection_string)
 		} else {
-			info('in memory') 
+			info('in memory')
 			this.db = new Database(':memory:')
 		}
 	}
@@ -119,10 +121,10 @@ export class Sqimo {
 		// Check if the field already exists
 		const existingFields = await this.showFields(collection)
 		const fieldExists = existingFields.some(existingField => existingField.name === field.name)
-	
+
 		if (!fieldExists) {
 			let sql = `ALTER TABLE ${collection} ADD COLUMN ${field.name} ${field.type}`
-	
+
 			if (field.unique) {
 				sql += ' UNIQUE'
 			}
@@ -133,7 +135,7 @@ export class Sqimo {
 				sql += ` DEFAULT ${field.default}`
 			}
 			this.db.exec(sql)
-	
+
 			if (field.index) {
 				this.ensureIndex(collection, [field.name])
 			}
@@ -186,7 +188,7 @@ export class Sqimo {
 		if (!doc._id) {
 			doc._id = createUid()
 		}
-	
+
 		const fields = Object.keys(doc).join(', ')
 		const placeholders = Object
 			.keys(doc).map(() => '?')
@@ -198,12 +200,12 @@ export class Sqimo {
 				}
 				return value
 			})
-		
+
 		const sql = `
 			INSERT INTO ${collection_name} (${fields}) 
 			VALUES (${placeholders})
 		`
-	
+
 		try {
 			const statement = this.db.prepare(sql)
 			statement.run(values)

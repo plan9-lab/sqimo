@@ -8,6 +8,15 @@ const sqimo = new Sqimo({
 
 const collection_name1 = 'users'
 
+it('create database dir', async (done) => {
+	const db_path = join(__dirname, '.data', 'test.db')
+	new Sqimo({
+		connection_string: db_path
+	})
+	expect(db_path).toBeString()
+	done()
+})
+
 it('create collection', async (done) => {
 	const columns = [
 		{
